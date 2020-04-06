@@ -18,7 +18,7 @@ const downloadImage = (url, image_path) =>
       }),
   );
 
-async function scrapeData(url) {
+async function scrapeData(url, url2) {
     const browser = await puppeteer.launch()
     const page = await browser.newPage()
     await page.goto(url)
@@ -67,33 +67,62 @@ async function scrapeData(url) {
     const worldDiedValueProperty = await el10.getProperty("textContent")
     const worldDied = await worldDiedValueProperty.jsonValue()
 
+    await page.goto(url2)
+
+    let data = await page.evaluate(() => {
+        const tds = Array.from(document.querySelectorAll('table tr td'))
+        return tds.map(td => td.innerHTML.trim())
+    });
+
+    const deathsValue = data[data.length-4]
+    
+    let x = 1
+    let y = 0
+    let sumAge = 0
+    let deathsAverageAge = 0
+    data = [0, ...data]
+    data.forEach( item => {
+        if(x%4 == 0) {
+            sumAge += Number(item)
+            y++
+        }  
+        x++
+        if(data.length == x) deathsAverageAge = sumAge / y 
+    })
+
+    deathsAverageAge = Math.round(deathsAverageAge)
+
     browser.close()
 
     return {
-        pageUpdatedUTC, 
-        infectedValue: Number(infectedValue.split(" ").join("")), 
-        recovered: Number(recovered.split(" ").join("")), 
-        homeQuarantine: Number(homeQuarantine.split(" ").join("")), 
-        sampling: Number(sampling.split(" ").join("")),
         mapSrc,
-        worldUpdatedUTC,
-        worldInfected: Number(worldInfected.split(" ").join("")),
-        worldRecovered: Number(worldRecovered.split(" ").join("")),
-        worldDied: Number(worldDied.split(" ").join("")),
-        dataFrameDate: new Date()
+        dataFrame: {
+            pageUpdatedUTC, 
+            infected: Number(infectedValue.split(" ").join("")), 
+            recovered: Number(recovered.split(" ").join("")), 
+            deaths: Number(deathsValue.split(" ").join("")),
+            deathsAverageAge,
+            homeQuarantine: Number(homeQuarantine.split(" ").join("")), 
+            sampling: Number(sampling.split(" ").join("")),
+            worldUpdatedUTC,
+            worldInfected: Number(worldInfected.split(" ").join("")),
+            worldRecovered: Number(worldRecovered.split(" ").join("")),
+            worldDied: Number(worldDied.split(" ").join("")),
+            dataFrameDate: new Date()
+        }
     }
 }
 
 schedule.scheduleJob("*/5 * * * * *", () => {
 
-    console.time("⏱ ")
-    scrapeData("https://koronavirus.gov.hu/").then( dataFrame => {
+    console.time("Time: ")
+    scrapeData("https://koronavirus.gov.hu/", "https://koronavirus.gov.hu/elhunytak").then( data => {
 
-        dataFrames.insertOne(dataFrame).then( async _ => {
+        dataFrames.insertOne(data.dataFrame).then( async _ => {
             let d = new Date()
-            await downloadImage(dataFrame.mapSrc, `infectionMaps/${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_${d.getHours()}.${d.getMinutes()}.jpg`)
-            console.timeEnd("⏱ ")
-            console.log(dataFrame)
+            await downloadImage(data.mapSrc, `infectionMaps/${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_${d.getHours()}.${d.getMinutes()}.jpg`)
+            console.timeEnd("Time: ")
+            console.log(data.dataFrame)
         })
         
     })
