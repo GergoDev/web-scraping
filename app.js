@@ -119,6 +119,8 @@ schedule.scheduleJob("*/5 * * * * *", () => {
 
         let lastPageUpdate = await dataFrames.aggregate([ {$sort: {dataFrameDate: -1}} ]).toArray()
         
+        console.log("WEB SCRAPING TASK RAN", new Date())
+
         if(lastPageUpdate[0].pageUpdatedUTC < data.dataFrame.pageUpdatedUTC) {
             dataFrames.insertOne(data.dataFrame).then( async _ => {
                 let d = new Date()
@@ -126,6 +128,8 @@ schedule.scheduleJob("*/5 * * * * *", () => {
                 console.log(data.dataFrame)
             })
         }
+
+        console.log("")
 
     })
 
