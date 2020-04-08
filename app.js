@@ -115,16 +115,18 @@ async function scrapeData(url, url2) {
 
 schedule.scheduleJob("*/5 * * * * *", () => {
 
-    console.time("Time: ")
-    scrapeData("https://koronavirus.gov.hu/", "https://koronavirus.gov.hu/elhunytak").then( data => {
+    scrapeData("https://koronavirus.gov.hu/", "https://koronavirus.gov.hu/elhunytak").then( async data => {
 
-        dataFrames.insertOne(data.dataFrame).then( async _ => {
-            let d = new Date()
-            await downloadImage(data.mapSrc, `infectionMaps/${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_${d.getHours()}.${d.getMinutes()}.jpg`)
-            console.timeEnd("Time: ")
-            console.log(data.dataFrame)
-        })
+        let lastPageUpdate = await dataFrames.aggregate([ {$sort: {dataFrameDate: -1}} ]).toArray()
         
+        if(lastPageUpdate[0].pageUpdatedUTC < data.dataFrame.pageUpdatedUTC) {
+            dataFrames.insertOne(data.dataFrame).then( async _ => {
+                let d = new Date()
+                await downloadImage(data.mapSrc, `infectionMaps/${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}_${d.getHours()}.${d.getMinutes()}.jpg`)
+                console.log(data.dataFrame)
+            })
+        }
+
     })
 
 })
