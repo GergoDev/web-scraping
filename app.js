@@ -67,27 +67,52 @@ async function scrapeData(url, url2) {
     const worldDiedValueProperty = await el10.getProperty("textContent")
     const worldDied = await worldDiedValueProperty.jsonValue()
 
-    await page.goto(url2)
+    let tableData = []
+    let goToNextPage = true
+    let pageNumber = 0
+    let pagination = ""
 
-    let data = await page.evaluate(() => {
-        const tds = Array.from(document.querySelectorAll('table tr td'))
-        return tds.map(td => td.innerHTML.trim())
-    });
+    while(goToNextPage) {
 
-    const deathsValue = data[data.length-4]
-    
+        if(pageNumber) pagination = "?page="+pageNumber
+
+        pageNumber++
+
+        await page.goto(url2+pagination)
+
+        const [deathsHeader] = await page.$x('//*[@id="block-block-22"]/div/h1')
+        if(deathsHeader) {
+            let actualTableData = await page.evaluate(() => {
+                const tds = Array.from(document.querySelectorAll('table tr td'))
+                return tds.map(td => td.innerHTML.trim())
+            })
+            tableData = tableData.concat(actualTableData)
+        } 
+        else {
+            goToNextPage = false
+        }
+
+    }
+
+    const deathsValue = tableData.length/4
+
     let x = 1
     let y = 0
     let sumAge = 0
     let deathsAverageAge = 0
-    data = [0, ...data]
-    data.forEach( item => {
+    let deathMinAge = 200
+    let deathMaxAge = 0
+    tableData = [0, ...tableData]
+    tableData.forEach( item => {
         if(x%4 == 0) {
-            sumAge += Number(item)
+            let age = Number(item)
+            sumAge += age
             y++
+            if(age < deathMinAge) deathMinAge = age
+            if(age > deathMaxAge) deathMaxAge = age
         }  
         x++
-        if(data.length == x) deathsAverageAge = sumAge / y 
+        if(tableData.length == x) deathsAverageAge = sumAge / y 
     })
 
     deathsAverageAge = Math.round(deathsAverageAge)
@@ -100,7 +125,9 @@ async function scrapeData(url, url2) {
             pageUpdatedUTC, 
             infected: Number(infectedValue.split(" ").join("")), 
             recovered: Number(recovered.split(" ").join("")), 
-            deaths: Number(deathsValue.split(" ").join("")),
+            deaths: deathsValue,
+            deathMinAge,
+            deathMaxAge,
             deathsAverageAge,
             homeQuarantine: Number(homeQuarantine.split(" ").join("")), 
             sampling: Number(sampling.split(" ").join("")),
