@@ -87,8 +87,7 @@ async function scrapeData(url, url2) {
                 return tds.map(td => td.innerHTML.trim())
             })
             tableData = tableData.concat(actualTableData)
-        } 
-        else {
+        } else {
             goToNextPage = false
         }
 
