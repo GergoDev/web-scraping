@@ -19,7 +19,7 @@ const downloadImage = (url, image_path) =>
   );
 
 async function scrapeData(url, url2) {
-    const browser = await puppeteer.launch()
+    const browser = await puppeteer.launch({ headless: true })
     const page = await browser.newPage()
     await page.goto(url)
 
@@ -29,41 +29,49 @@ async function scrapeData(url, url2) {
     pageUpdated = new Date(pageUpdated.split("dátuma: ")[1].trim())
     pageUpdatedUTC = new Date(pageUpdated.getTime() - (60 * 60 * 1000))
 
-    const [el2] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[2]/div/div[2]/div[1]/div/span/div/span[1]')
-    const infectedValueProperty = await el2.getProperty("textContent")
-    const infectedValue = await infectedValueProperty.jsonValue()
+    const [el2] = await page.$x('//*[@id="content-fertozott-pest"]')
+    const infectedPestProperty = await el2.getProperty("textContent")
+    const infectedPest = await infectedPestProperty.jsonValue()
 
-    const [el3] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[2]/div/div[2]/div[2]/div/span/div/span[1]')
-    const recoveredValueProperty = await el3.getProperty("textContent")
-    const recovered = await recoveredValueProperty.jsonValue()
+    const [el25] = await page.$x('//*[@id="content-fertozott-videk"]')
+    const infectedVidekProperty = await el25.getProperty("textContent")
+    const infectedVidek = await infectedVidekProperty.jsonValue()
 
-    const [el4] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[2]/div/div[2]/div[4]/div/span/div/span[1]')
+    const [el3] = await page.$x('//*[@id="content-gyogyult-pest"]')
+    const recoveredPestProperty = await el3.getProperty("textContent")
+    const recoveredPest = await recoveredPestProperty.jsonValue()
+
+    const [el35] = await page.$x('//*[@id="content-gyogyult-videk"]')
+    const recoveredVidekProperty = await el35.getProperty("textContent")
+    const recoveredVidek = await recoveredVidekProperty.jsonValue()
+
+    const [el4] = await page.$x('//*[@id="content-karantenban"]')
     const homeQuarantineValueProperty = await el4.getProperty("textContent")
     const homeQuarantine = await homeQuarantineValueProperty.jsonValue()
 
-    const [el5] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[2]/div/div[2]/div[5]/div/span/div/span[1]')
+    const [el5] = await page.$x('//*[@id="content-mintavetel"]')
     const samplingValueProperty = await el5.getProperty("textContent")
     const sampling = await samplingValueProperty.jsonValue()
 
-    const [el6] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[3]/div/div[1]/div/a/div/img')
+    const [el6] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[2]/div[2]/div[2]/div/div[1]/div/a/div/img')
     const mapSrcProperty = await el6.getProperty("src")
     const mapSrc = await mapSrcProperty.jsonValue()
-    
+
     const [el7] = await page.$x('//*[@id="block-block-2"]/div/p')
     const worldUpdatedProperty = await el7.getProperty("textContent")
     let worldUpdated = await worldUpdatedProperty.jsonValue()
     worldUpdated = new Date(worldUpdated.split("dátuma: ")[1].trim())
     worldUpdatedUTC = new Date(worldUpdated.getTime() - (60 * 60 * 1000))
 
-    const [el8] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[4]/div/div[2]/div[1]/div/span/div/span[1]')
+    const [el8] = await page.$x('//*[@id="content-fertozott-global"]')
     const worldInfectedValueProperty = await el8.getProperty("textContent")
     const worldInfected = await worldInfectedValueProperty.jsonValue()
 
-    const [el9] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[4]/div/div[2]/div[2]/div/span/div/span[1]')
+    const [el9] = await page.$x('//*[@id="content-gyogyult-global"]')
     const worldRecoveredValueProperty = await el9.getProperty("textContent")
     const worldRecovered = await worldRecoveredValueProperty.jsonValue()
 
-    const [el10] = await page.$x('//*[@id="block-system-main"]/div/div[1]/div[4]/div/div[2]/div[3]/div/span/div/span[1]')
+    const [el10] = await page.$x('//*[@id="content-elhunyt-global"]')
     const worldDiedValueProperty = await el10.getProperty("textContent")
     const worldDied = await worldDiedValueProperty.jsonValue()
 
@@ -122,8 +130,8 @@ async function scrapeData(url, url2) {
         mapSrc,
         dataFrame: {
             pageUpdatedUTC, 
-            infected: Number(infectedValue.split(" ").join("")), 
-            recovered: Number(recovered.split(" ").join("")), 
+            infected: Number(infectedPest.split(" ").join("")) + Number(infectedVidek.split(" ").join("")), 
+            recovered: Number(recoveredPest.split(" ").join("")) + Number(recoveredVidek.split(" ").join("")), 
             deaths: deathsValue,
             deathMinAge,
             deathMaxAge,
@@ -139,7 +147,7 @@ async function scrapeData(url, url2) {
     }
 }
 
-schedule.scheduleJob("*/5 * * * * *", () => {
+schedule.scheduleJob("0 9,20 * * *", () => {
 
     scrapeData("https://koronavirus.gov.hu/", "https://koronavirus.gov.hu/elhunytak").then( async data => {
 
