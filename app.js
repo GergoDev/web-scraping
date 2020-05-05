@@ -30,12 +30,12 @@ async function scrapeData(url, url2) {
     pageUpdatedUTC = new Date(pageUpdated.getTime() - (60 * 60 * 1000))
 
     const [el2] = await page.$x('//*[@id="content-fertozott-pest"]')
-    const infectedPestProperty = await el2.getProperty("textContent")
-    const infectedPest = await infectedPestProperty.jsonValue()
+    const ActiveInfectedPestProperty = await el2.getProperty("textContent")
+    const ActiveInfectedPest = await ActiveInfectedPestProperty.jsonValue()
 
     const [el25] = await page.$x('//*[@id="content-fertozott-videk"]')
-    const infectedVidekProperty = await el25.getProperty("textContent")
-    const infectedVidek = await infectedVidekProperty.jsonValue()
+    const ActiveInfectedVidekProperty = await el25.getProperty("textContent")
+    const ActiveInfectedVidek = await ActiveInfectedVidekProperty.jsonValue()
 
     const [el3] = await page.$x('//*[@id="content-gyogyult-pest"]')
     const recoveredPestProperty = await el3.getProperty("textContent")
@@ -123,15 +123,16 @@ async function scrapeData(url, url2) {
     })
 
     deathsAverageAge = Math.round(deathsAverageAge)
-
+    let recovered = Number(recoveredPest.split(" ").join("")) + Number(recoveredVidek.split(" ").join(""))
+    
     browser.close()
 
     return {
         mapSrc,
         dataFrame: {
             pageUpdatedUTC, 
-            infected: Number(infectedPest.split(" ").join("")) + Number(infectedVidek.split(" ").join("")), 
-            recovered: Number(recoveredPest.split(" ").join("")) + Number(recoveredVidek.split(" ").join("")), 
+            infected: Number(ActiveInfectedPest.split(" ").join("")) + Number(ActiveInfectedVidek.split(" ").join("")) + recovered + deathsValue, 
+            recovered, 
             deaths: deathsValue,
             deathMinAge,
             deathMaxAge,
