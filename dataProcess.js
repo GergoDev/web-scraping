@@ -12,17 +12,20 @@ async function coronaDataFramesRequest(props) {
     ]).toArray()
 }
 
-function coronaProcessing(dataFrames, mode) {
+function coronaProcessing(dataFrames, deathList, mode) {
 
     let n = n => n > 9 ? "" + n : "0" + n
 
     let previousPageUpdate
     let infected = {}
+    let activeInfected = {}
     let recovered = {}
     let deaths = {}
     let deathMinAge = {}
     let deathMaxAge = {}
     let deathsAverageAge = {}
+    let deathMale = {}
+    let deathFemale = {}
     let homeQuarantine = {}
     let sampling = {}
     let worldInfected = {}
@@ -35,14 +38,28 @@ function coronaProcessing(dataFrames, mode) {
         let days = ["vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat"]
         let frameDateStyled = `${actualFrameDate.getFullYear()}-${n(actualFrameDate.getMonth() + 1)}-${n(actualFrameDate.getDate())} ${days[actualFrameDate.getDay()]}`
 
+        let male = 0
+        let female = 0
+        if(dataFrame.deaths) {
+            deathList.slice(0, dataFrame.deaths).forEach( people => {
+                if(people.sex === "Férfi")
+                    male++
+                else
+                    female++
+            })
+        }
+
         infected[frameDateStyled] = dataFrame.infected
-        recovered[frameDateStyled] = dataFrame.recovered
-        deaths[frameDateStyled] = dataFrame.deaths
-        deathMinAge[frameDateStyled] = dataFrame.deathMinAge
-        deathMaxAge[frameDateStyled] = dataFrame.deathMaxAge
-        deathsAverageAge[frameDateStyled] = dataFrame.deathsAverageAge
-        homeQuarantine[frameDateStyled] = dataFrame.homeQuarantine
-        sampling[frameDateStyled] = dataFrame.sampling
+        activeInfected[frameDateStyled] = dataFrame.infected - dataFrame.recovered - dataFrame.deaths
+        recovered[frameDateStyled] = dataFrame.recovered ? dataFrame.recovered : 0
+        deaths[frameDateStyled] = dataFrame.deaths ? dataFrame.deaths : 0
+        deathMinAge[frameDateStyled] = dataFrame.deathMinAge ? dataFrame.deathMinAge : 0
+        deathMaxAge[frameDateStyled] = dataFrame.deathMaxAge ? dataFrame.deathMaxAge : 0
+        deathsAverageAge[frameDateStyled] = dataFrame.deathsAverageAge ? dataFrame.deathsAverageAge : 0
+        deathMale[frameDateStyled] = male
+        deathFemale[frameDateStyled] = female
+        homeQuarantine[frameDateStyled] = dataFrame.homeQuarantine ? dataFrame.homeQuarantine : 0
+        sampling[frameDateStyled] = dataFrame.sampling ? dataFrame.sampling : 0
         worldInfected[frameDateStyled] = dataFrame.worldInfected
         worldRecovered[frameDateStyled] = dataFrame.worldRecovered
         worldDied[frameDateStyled] = dataFrame.worldDied
@@ -68,34 +85,41 @@ function coronaProcessing(dataFrames, mode) {
             ...infected
         },
         {
+            IndicatorName: "Aktív Fertőzött",
+            ...activeInfected
+        },
+        {
             IndicatorName: "Gyógyult",
             ...recovered
         },
         {
             IndicatorName: "Elhunyt",
             ...deaths
-        },
-        {
-            IndicatorName: "Hatósági házi karanténban",
-            ...homeQuarantine
-        },
-        {
-            IndicatorName: "Mintavétel",
-            ...sampling
         }]
     } else if (mode === "dStat") {
         var framesCalculated = [{
-            IndicatorName: "Legidősebb elhunyt",
+            IndicatorName: "Legidősebb Elhunyt",
             ...deathMaxAge
         },
         {
-            IndicatorName: "Legfiatalabb elhunyt",
+            IndicatorName: "Legfiatalabb Elhunyt",
             ...deathMinAge
         },
         {
-            IndicatorName: "Elhunytak átlagéletkora",
+            IndicatorName: "Átlagéletkor",
             ...deathsAverageAge
         }]
+    } else if(mode === "sexStat") {
+        var framesCalculated = [
+            {
+                IndicatorName: "Elhunyt Férfi",
+                ...deathMale
+            },
+            {
+                IndicatorName: "Elhunyt Nő",
+                ...deathFemale
+            }
+        ]
     } else if (mode === "wStat") {
         var framesCalculated = [{
             IndicatorName: "Fertőzött",
@@ -109,10 +133,25 @@ function coronaProcessing(dataFrames, mode) {
             IndicatorName: "Elhunyt",
             ...worldDied
         }]
+    } else if(mode === "quarantine") {
+        var framesCalculated = [
+            {
+                IndicatorName: "Karanténban",
+                ...homeQuarantine
+            },
+            {
+                IndicatorName: "Mintavétel",
+                ...sampling
+            }
+        ]
     } else if (mode === "allIn") {
         var framesCalculated = [{
             IndicatorName: "Fertőzött",
             ...infected
+        },
+        {
+            IndicatorName: "Aktív Fertőzött",
+            ...activeInfected
         },
         {
             IndicatorName: "Gyógyult",
@@ -123,7 +162,7 @@ function coronaProcessing(dataFrames, mode) {
             ...deaths
         },
         {
-            IndicatorName: "Hatósági házi karanténban",
+            IndicatorName: "Karanténban",
             ...homeQuarantine
         },
         {
@@ -131,16 +170,24 @@ function coronaProcessing(dataFrames, mode) {
             ...sampling
         },
         {
-            IndicatorName: "Legidősebb elhunyt",
+            IndicatorName: "Legidősebb Elhunyt",
             ...deathMaxAge
         },
         {
-            IndicatorName: "Legfiatalabb elhunyt",
+            IndicatorName: "Legfiatalabb Elhunyt",
             ...deathMinAge
         },
         {
-            IndicatorName: "Elhunytak átlagéletkora",
+            IndicatorName: "Átlagéletkor",
             ...deathsAverageAge
+        },
+        {
+            IndicatorName: "Elhunyt Férfi",
+            ...deathMale
+        },
+        {
+            IndicatorName: "Elhunyt Nő",
+            ...deathFemale
         },
         {
             IndicatorName: "Fertőzött",
@@ -165,7 +212,11 @@ async function coronaDataFramesProcessing(props) {
 
     const dataFramesFromMongo = await coronaDataFramesRequest({ client, dataFramesFrom, dataFramesTo })
 
-    return coronaProcessing(dataFramesFromMongo, mode)
+    let deathList = await client.db().collection("deathList").aggregate([
+        { $sort: { number: 1}}
+    ]).toArray()
+
+    return coronaProcessing(dataFramesFromMongo, deathList, mode)
 }
 
 mongodb.connect(
@@ -176,13 +227,14 @@ mongodb.connect(
         coronaDataFramesProcessing({
             client,
             dataFramesFrom: new Date("2020-03-04T00:00:00.000+0100"),
-            dataFramesTo: new Date("2020-04-29T00:00:30.000+0100"),
-            mode: "stat"
+            dataFramesTo: new Date("2020-05-11T00:00:30.000+0100"),
+            mode: "allIn"
         }).then(res => {
             let fileName = "coronaDataFramesProcessed.json"
             fs.writeFile("framesProcessed/" + fileName, JSON.stringify(res), err => {
                 if (err) throw err
                 console.log(fileName + ", Saved!")
+                client.close()
             })
         })
 
